@@ -1,0 +1,93 @@
+name: Go Build App
+
+on:
+ workflow_dispatch:
+   inputs:
+     os:
+       description: Target OS
+       required: true
+       default: darwin
+       type: choice
+       options:
+         - darwin
+         - linux
+         - windows
+     arch:
+       description: Target architecture
+       required: true
+       default: amd64
+       type: choice
+       options:
+         - amd64
+         - arm64
+
+jobs:
+ build:
+   runs-on: ubuntu-latest
+
+   steps:
+     - name: Checkout
+       uses: actions/checkout@v4
+
+     - name: Set up Go
+       uses: actions/setup-go@v5
+       with:
+         go-version-file: go.mod
+
+     - name: Install Linux build dependencies
+       if: ${{ github.event.inputs.os == 'linux' }}
+       run: |
+         sudo apt-get update -q
+         sudo apt-get install -y \
+           gcc \
+           libgl1-mesa-dev \
+           libx11-dev \
+           libxcursor-dev \
+           libxrandr-dev \
+           libxinerama-dev \
+           libxi-dev \
+           libxxf86vm-dev \
+           libasound2-dev
+
+     - name: Install cross-compile dependencies for darwin
+       if: ${{ github.event.inputs.os == 'darwin' }}
+       run: |
+         sudo apt-get update -q
+         sudo apt-get install -y clang llvm
+
+     - name: Install cross-compile dependencies for windows
+       if: ${{ github.event.inputs.os == 'windows' }}
+       run: |
+         sudo apt-get update -q
+         sudo apt-get install -y gcc-mingw-w64
+
+     - name: Get dependencies
+       run: |
+         go get gioui.org
+         go get github.com/faiface/beep
+         go mod tidy
+
+     - name: Set binary name
+       id: naming
+       run: |
+         NAME=gopher-typist
+         if [ "${{ github.event.inputs.os }}" = "windows" ]; then
+           NAME="${NAME}.exe"
+         fi
+         echo "binary=${NAME}" >> $GITHUB_OUTPUT
+         echo "artifact=gopher-typist-${{ github.event.inputs.os }}-${{ github.event.inputs.arch }}" >> $GITHUB_OUTPUT
+
+     - name: Build
+       env:
+         GOOS:   ${{ github.event.inputs.os }}
+         GOARCH: ${{ github.event.inputs.arch }}
+         CGO_ENABLED: 1
+       run: |
+         go build -o bin/${{ steps.naming.outputs.binary }} .
+
+     - name: Upload artifact
+       uses: actions/upload-artifact@v4
+       with:
+         name: ${{ steps.naming.outputs.artifact }}
+         path: bin/${{ steps.naming.outputs.binary }}
+         retention-days: 30
