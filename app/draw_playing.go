@@ -21,29 +21,26 @@ func DrawPlaying(gtx layout.Context, th *material.Theme, r *Router) layout.Dimen
 		return layout.Dimensions{}
 	}
 
-	rect := gtx.Constraints.Max
+	maxPt := gtx.Constraints.Max
 	charW := float32(gtx.Sp(unit.Sp(CharFontSize))) * 0.6
 
-	// origin: center for Quick, random position for Hard
 	var originX, originY float32
 	if g.Mode == ModeHard {
-		originX = g.Position.X * float32(rect.X)
-		originY = g.Position.Y * float32(rect.Y)
+		originX = g.Position.X * float32(maxPt.X)
+		originY = g.Position.Y * float32(maxPt.Y)
 	} else {
-		originX = float32(rect.X) / 2
-		originY = float32(rect.Y) / 2
+		originX = float32(maxPt.X) / 2
+		originY = float32(maxPt.Y) / 2
 	}
 
-	// shake offset
 	shakeX := float32(0)
 	if g.ShakeTimer > 0 {
 		shakeX = float32(math.Sin(float64(g.ShakeTimer)*30.0*2*math.Pi)) * 8.0
 	}
 
-	// draw each character in the window
 	for offset := -WindowRadius; offset <= WindowRadius; offset++ {
 		idx := g.Cursor + offset
-		var ch rune = '\u00A0' // non-breaking space for out-of-bounds
+		var ch rune = '\u00A0'
 		if idx >= 0 && idx < len(g.Text) {
 			ch = g.Text[idx]
 		}
@@ -66,15 +63,15 @@ func DrawPlaying(gtx layout.Context, th *material.Theme, r *Router) layout.Dimen
 		var col color.NRGBA
 		switch {
 		case offset == 0:
-			col = color.NRGBA{R: 239, G: 68, B: 68, A: a} // red — current char
+			col = color.NRGBA{R: 239, G: 68, B: 68, A: a}
 		case offset > 0:
-			col = color.NRGBA{R: 200, G: 200, B: 200, A: a} // gray — upcoming
+			col = color.NRGBA{R: 200, G: 200, B: 200, A: a}
 		case idx >= 0:
 			switch g.Correctness[idx] {
 			case CorrectnessCorrect:
-				col = color.NRGBA{R: 134, G: 239, B: 172, A: a} // green
+				col = color.NRGBA{R: 134, G: 239, B: 172, A: a}
 			case CorrectnessWrong:
-				col = color.NRGBA{R: 252, G: 165, B: 165, A: a} // pink
+				col = color.NRGBA{R: 252, G: 165, B: 165, A: a}
 			default:
 				col = color.NRGBA{R: 200, G: 200, B: 200, A: a}
 			}
@@ -87,20 +84,19 @@ func DrawPlaying(gtx layout.Context, th *material.Theme, r *Router) layout.Dimen
 
 		drawChar(gtx, th, ch, x, y, CharFontSize, col)
 
-		// underline the current char
 		if offset == 0 {
 			uy := y + CharFontSize*0.45
 			drawLine(gtx, x-charW/2, uy, x+charW/2, uy, col)
 		}
 	}
 
-	// Hard mode timer
 	if g.Mode == ModeHard {
 		timerStr := fmt.Sprintf("%.1fs", math.Max(float64(g.RemainingSecs), 0))
-		drawTextAt(gtx, th, timerStr, 16, float32(rect.Y)-16, 28, color.NRGBA{R: 239, G: 68, B: 68, A: 255})
+		drawTextAt(gtx, th, timerStr, 16, float32(maxPt.Y)-40, 28,
+			color.NRGBA{R: 239, G: 68, B: 68, A: 255})
 	}
 
-	return layout.Dimensions{Size: rect}
+	return layout.Dimensions{Size: maxPt}
 }
 
 func drawChar(gtx layout.Context, th *material.Theme, ch rune, x, y, size float32, col color.NRGBA) {
