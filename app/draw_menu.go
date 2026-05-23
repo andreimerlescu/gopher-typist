@@ -5,20 +5,14 @@ import (
 
 	"gioui.org/layout"
 	"gioui.org/unit"
-	"gioui.org/widget"
 	"gioui.org/widget/material"
 )
 
-type MenuWidgets struct {
-	QuickBtn widget.Clickable
-	HardBtn  widget.Clickable
-}
-
-func (m *MenuWidgets) Layout(gtx layout.Context, th *material.Theme, r *Router) layout.Dimensions {
-	if m.QuickBtn.Clicked(gtx) {
+func DrawMenu(gtx layout.Context, th *material.Theme, r *Router, w *Widgets) layout.Dimensions {
+	if w.QuickBtn.Clicked(gtx) {
 		r.StartGame(ModeQuick)
 	}
-	if m.HardBtn.Clicked(gtx) {
+	if w.HardBtn.Clicked(gtx) {
 		r.StartGame(ModeHard)
 	}
 
@@ -34,9 +28,9 @@ func (m *MenuWidgets) Layout(gtx layout.Context, th *material.Theme, r *Router) 
 		layout.Rigid(layout.Spacer{Height: unit.Dp(8)}.Layout),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				sub := material.Body2(th, "press Escape anytime to return here")
-				sub.Color = color.NRGBA{R: 150, G: 150, B: 150, A: 255}
-				return sub.Layout(gtx)
+				lbl := material.Body2(th, "press Escape anytime to return here")
+				lbl.Color = color.NRGBA{R: 150, G: 150, B: 150, A: 255}
+				return lbl.Layout(gtx)
 			})
 		}),
 		layout.Rigid(layout.Spacer{Height: unit.Dp(24)}.Layout),
@@ -46,7 +40,7 @@ func (m *MenuWidgets) Layout(gtx layout.Context, th *material.Theme, r *Router) 
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						gtx.Constraints.Min.X = gtx.Dp(unit.Dp(160))
 						gtx.Constraints.Max.X = gtx.Constraints.Min.X
-						btn := material.Button(th, &m.QuickBtn, "New Quick Game")
+						btn := material.Button(th, &w.QuickBtn, "New Quick Game")
 						btn.Background = color.NRGBA{R: 59, G: 130, B: 246, A: 255}
 						return btn.Layout(gtx)
 					}),
@@ -54,7 +48,7 @@ func (m *MenuWidgets) Layout(gtx layout.Context, th *material.Theme, r *Router) 
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						gtx.Constraints.Min.X = gtx.Dp(unit.Dp(160))
 						gtx.Constraints.Max.X = gtx.Constraints.Min.X
-						btn := material.Button(th, &m.HardBtn, "New Hard Game")
+						btn := material.Button(th, &w.HardBtn, "New Hard Game")
 						btn.Background = color.NRGBA{R: 239, G: 68, B: 68, A: 255}
 						return btn.Layout(gtx)
 					}),
