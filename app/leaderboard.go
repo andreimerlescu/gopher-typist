@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 )
@@ -251,10 +252,10 @@ func deserialize(data []byte) ([]LeaderboardEntry, error) {
 	return entries, nil
 }
 
-func floatBits(f float64) uint64 {
-	return *(*uint64)(unsafe.Pointer(&f))
+func floatBits(f float64) uint64 { 
+	return math.Float64bits(f) 
+}
+func bitsFloat(u uint64) float64 { 
+	return math.Float64frombits(u) 
 }
 
-func bitsFloat(u uint64) float64 {
-	return *(*float64)(unsafe.Pointer(&u))
-}
