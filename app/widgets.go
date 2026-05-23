@@ -3,7 +3,7 @@ package app
 import "gioui.org/widget"
 
 // Widgets holds all stateful Gio widgets for the lifetime of the app.
-// Declared once, never re-created, so Gio can track state across frames.
+// Declared once in App, never re-created.
 type Widgets struct {
 	// menu
 	QuickBtn widget.Clickable
