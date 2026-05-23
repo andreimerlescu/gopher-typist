@@ -3,31 +3,32 @@ package app
 import (
 	"log"
 	"os"
+	"time"
 
 	"gioui.org/app"
+	"gioui.org/io/key"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
 )
 
-// App wires together the router, widgets, and Gio window.
 type App struct {
-	router  *Router
-	widgets *Widgets
-	theme   *material.Theme
+	router    *Router
+	widgets   *Widgets
+	theme     *material.Theme
+	lastFrame time.Time
 }
 
 func newApp() *App {
-	th := material.NewTheme()
 	return &App{
-		router:  NewRouter(),
-		widgets: &Widgets{},
-		theme:   th,
+		router:    NewRouter(),
+		widgets:   &Widgets{},
+		theme:     material.NewTheme(),
+		lastFrame: time.Now(),
 	}
 }
 
-// Run is the entry point called from main.go.
 func Run() {
 	go func() {
 		w := new(app.Window)
@@ -55,22 +56,93 @@ func (a *App) loop(w *app.Window) error {
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, e)
 
-			// poll for async leaderboard load
+			// dt in seconds since last frame
+			now := time.Now()
+			dt := float32(now.Sub(a.lastFrame).Seconds())
+			a.lastFrame = now
+
+			// non-blocking leaderboard poll
 			a.router.PollLeaderboard()
 
-			// tick timers
-			dt := float32(e.Now.Sub(e.Now).Seconds()) // always 0 — use predicted
-			dt = gtx.Now.Sub(gtx.Now).Seconds()        // still 0
-			_ = dt
-			a.tick(gtx)
+			// tick game timers and shake
+			if a.router.Screen == ScreenPlaying && a.router.Game != nil {
+				a.router.Game.TickShake(dt)
+				if a.router.Game.TickTimer(dt) {
+					a.router.Timeout()
+				}
+			}
 
-			// handle keyboard input
+			// keyboard input
 			a.handleInput(gtx, w)
 
-			// draw current screen
-			a.draw(gtx)
+			// draw
+			layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				return a.draw(gtx)
+			})
+
+			// request next frame so timers keep ticking
+			w.Invalidate()
 
 			e.Frame(gtx.Ops)
 		}
+	}
+}
+
+func (a *App) handleInput(gtx layout.Context, w *app.Window) {
+	for {
+		ev, ok := gtx.Event(key.Filter{})
+		if !ok {
+			break
+		}
+		ke, ok := ev.(key.Event)
+		if !ok || ke.State != key.Press {
+			continue
+		}
+
+		// Escape always goes to menu
+		if ke.Name == key.NameEscape {
+			a.router.GoToMenu()
+			continue
+		}
+
+		// Enter submits name on name entry screen
+		if ke.Name == key.NameReturn && a.router.Screen == ScreenNameEntry {
+			a.router.NameInput = a.widgets.NameEditor.Text()
+			a.router.SubmitName()
+			a.widgets.NameEditor.SetText("")
+			continue
+		}
+
+		// typing during game — handled via key.Filter for runes
+		if a.router.Screen == ScreenPlaying && a.router.Game != nil {
+			if len(ke.Name) == 1 {
+				event := a.router.Game.HandleChar(rune(ke.Name[0]))
+				switch event {
+				case GameEventCorrect:
+					a.router.Audio.PlaySFX(Asset("keypress.wav"))
+				case GameEventWrong:
+					a.router.Audio.PlaySFX(Asset("keypress_wrong.wav"))
+				case GameEventLevelComplete:
+					a.router.FinishLevel()
+				}
+			}
+		}
+	}
+}
+
+func (a *App) draw(gtx layout.Context) layout.Dimensions {
+	switch a.router.Screen {
+	case ScreenMenu:
+		return DrawMenu(gtx, a.theme, a.router, a.widgets)
+	case ScreenPlaying:
+		return DrawPlaying(gtx, a.theme, a.router)
+	case ScreenNameEntry:
+		return DrawNameEntry(gtx, a.theme, a.router, a.widgets)
+	case ScreenScore:
+		return DrawScore(gtx, a.theme, a.router, a.widgets)
+	case ScreenTimeout:
+		return DrawTimeout(gtx, a.theme, a.router, a.widgets)
+	default:
+		return layout.Dimensions{}
 	}
 }
